@@ -1,8 +1,8 @@
 "use strict";
+// import os from 'os';
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.HttpClient = void 0;
 const tslib_1 = require("tslib");
-const os_1 = tslib_1.__importDefault(require("os"));
 const consts_1 = require("@apify/consts");
 const agentkeepalive_1 = tslib_1.__importDefault(require("agentkeepalive"));
 const async_retry_1 = tslib_1.__importDefault(require("async-retry"));
@@ -77,11 +77,13 @@ class HttpClient {
         const { token } = options;
         this.stats = options.apifyClientStats;
         this.maxRetries = options.maxRetries;
-        this.minDelayBetweenRetriesMillis = options.minDelayBetweenRetriesMillis;
+        this.minDelayBetweenRetriesMillis =
+            options.minDelayBetweenRetriesMillis;
         this.userProvidedRequestInterceptors = options.requestInterceptors;
         this.timeoutMillis = options.timeoutSecs * 1000;
         this.logger = options.logger;
-        this.workflowKey = options.workflowKey || process.env[consts_1.APIFY_ENV_VARS.WORKFLOW_KEY];
+        this.workflowKey =
+            options.workflowKey || process.env[consts_1.APIFY_ENV_VARS.WORKFLOW_KEY];
         this._onRequestRetry = this._onRequestRetry.bind(this);
         if ((0, utils_1.isNode)()) {
             // We want to keep sockets alive for better performance.
@@ -103,7 +105,9 @@ class HttpClient {
                 const formattedParams = Object.entries(params)
                     .filter(([, value]) => value !== undefined)
                     .map(([key, value]) => {
-                    const updatedValue = typeof value === 'boolean' ? Number(value) : value;
+                    const updatedValue = typeof value === 'boolean'
+                        ? Number(value)
+                        : value;
                     return [key, String(updatedValue)];
                 });
                 return new URLSearchParams(formattedParams).toString();
@@ -125,13 +129,15 @@ class HttpClient {
         this.axios.defaults.headers = new axios_1.AxiosHeaders();
         // If workflow key is available, pass it as a header
         if (this.workflowKey) {
-            this.axios.defaults.headers['X-Apify-Workflow-Key'] = this.workflowKey;
+            this.axios.defaults.headers['X-Apify-Workflow-Key'] =
+                this.workflowKey;
         }
         if ((0, utils_1.isNode)()) {
             // Works only in Node. Cannot be set in browser
-            const isAtHome = !!process.env[consts_1.APIFY_ENV_VARS.IS_AT_HOME];
-            const userAgent = `ApifyClient/${version} (${os_1.default.type()}; Node/${process.version}); isAtHome/${isAtHome}`;
-            this.axios.defaults.headers['User-Agent'] = userAgent;
+            // const isAtHome = !!process.env[APIFY_ENV_VARS.IS_AT_HOME];
+            // const userAgent = `ApifyClient/${version} (${os.type()}; Node/${process.version}); isAtHome/${isAtHome}`;
+            this.axios.defaults.headers['User-Agent'] = `ApifyClient/${version}; Node`;
+            // this.axios.defaults.headers['User-Agent'] = userAgent;
         }
         // Attach Authorization header for all requests if token was provided
         if (token) {

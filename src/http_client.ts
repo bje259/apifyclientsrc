@@ -1,4 +1,4 @@
-import os from 'os';
+// import os from 'os';
 
 import { APIFY_ENV_VARS } from '@apify/consts';
 import { Log } from '@apify/log';
@@ -21,12 +21,7 @@ import {
     responseInterceptors,
 } from './interceptors';
 import { Statistics } from './statistics';
-import {
-    isNode,
-    getVersionData,
-    cast,
-    isStream,
-} from './utils';
+import { isNode, getVersionData, cast, isStream } from './utils';
 
 const { version } = getVersionData();
 
@@ -57,11 +52,13 @@ export class HttpClient {
         const { token } = options;
         this.stats = options.apifyClientStats;
         this.maxRetries = options.maxRetries;
-        this.minDelayBetweenRetriesMillis = options.minDelayBetweenRetriesMillis;
+        this.minDelayBetweenRetriesMillis =
+            options.minDelayBetweenRetriesMillis;
         this.userProvidedRequestInterceptors = options.requestInterceptors;
         this.timeoutMillis = options.timeoutSecs * 1000;
         this.logger = options.logger;
-        this.workflowKey = options.workflowKey || process.env[APIFY_ENV_VARS.WORKFLOW_KEY];
+        this.workflowKey =
+            options.workflowKey || process.env[APIFY_ENV_VARS.WORKFLOW_KEY];
         this._onRequestRetry = this._onRequestRetry.bind(this);
 
         if (isNode()) {
@@ -82,12 +79,16 @@ export class HttpClient {
             httpAgent: this.httpAgent,
             httpsAgent: this.httpsAgent,
             paramsSerializer: (params) => {
-                const formattedParams: [string, string][] = Object.entries<string>(params)
-                    .filter(([, value]) => value !== undefined)
-                    .map(([key, value]) => {
-                        const updatedValue = typeof value === 'boolean' ? Number(value) : value;
-                        return [key, String(updatedValue)];
-                    });
+                const formattedParams: [string, string][] =
+                    Object.entries<string>(params)
+                        .filter(([, value]) => value !== undefined)
+                        .map(([key, value]) => {
+                            const updatedValue =
+                                typeof value === 'boolean'
+                                    ? Number(value)
+                                    : value;
+                            return [key, String(updatedValue)];
+                        });
 
                 return new URLSearchParams(formattedParams).toString();
             },
@@ -110,14 +111,18 @@ export class HttpClient {
 
         // If workflow key is available, pass it as a header
         if (this.workflowKey) {
-            this.axios.defaults.headers['X-Apify-Workflow-Key'] = this.workflowKey;
+            this.axios.defaults.headers['X-Apify-Workflow-Key'] =
+                this.workflowKey;
         }
 
         if (isNode()) {
             // Works only in Node. Cannot be set in browser
-            const isAtHome = !!process.env[APIFY_ENV_VARS.IS_AT_HOME];
-            const userAgent = `ApifyClient/${version} (${os.type()}; Node/${process.version}); isAtHome/${isAtHome}`;
-            this.axios.defaults.headers['User-Agent'] = userAgent;
+            // const isAtHome = !!process.env[APIFY_ENV_VARS.IS_AT_HOME];
+            // const userAgent = `ApifyClient/${version} (${os.type()}; Node/${process.version}); isAtHome/${isAtHome}`;
+            this.axios.defaults.headers[
+                'User-Agent'
+            ] = `ApifyClient/${version}; Node`;
+            // this.axios.defaults.headers['User-Agent'] = userAgent;
         }
 
         // Attach Authorization header for all requests if token was provided
@@ -125,9 +130,15 @@ export class HttpClient {
             this.axios.defaults.headers.Authorization = `Bearer ${token}`;
         }
 
-        requestInterceptors.forEach((i) => this.axios.interceptors.request.use(i as any));
-        this.userProvidedRequestInterceptors.forEach((i) => this.axios.interceptors.request.use(i as any));
-        responseInterceptors.forEach((i) => this.axios.interceptors.response.use(i as any));
+        requestInterceptors.forEach((i) =>
+            this.axios.interceptors.request.use(i as any)
+        );
+        this.userProvidedRequestInterceptors.forEach((i) =>
+            this.axios.interceptors.request.use(i as any)
+        );
+        responseInterceptors.forEach((i) =>
+            this.axios.interceptors.response.use(i as any)
+        );
     }
 
     async call<T = any>(config: ApifyRequestConfig): Promise<ApifyResponse<T>> {
@@ -142,8 +153,12 @@ export class HttpClient {
     }
 
     private _informAboutStreamNoRetry() {
-        this.logger.warningOnce('Request body was a stream - retrying will not work, as part of it was already consumed.');
-        this.logger.warningOnce('If you want Apify client to handle retries for you, collect the stream into a buffer before sending it.');
+        this.logger.warningOnce(
+            'Request body was a stream - retrying will not work, as part of it was already consumed.'
+        );
+        this.logger.warningOnce(
+            'If you want Apify client to handle retries for you, collect the stream into a buffer before sending it.'
+        );
     }
 
     /**
@@ -152,7 +167,10 @@ export class HttpClient {
      * retrying logic.
      */
     private _createRequestHandler(config: ApifyRequestConfig) {
-        const makeRequest: RetryFunction<ApifyResponse> = async (stopTrying, attempt) => {
+        const makeRequest: RetryFunction<ApifyResponse> = async (
+            stopTrying,
+            attempt
+        ) => {
             this.stats.requests++;
             let response: ApifyResponse;
             const requestIsStream = isStream(config.data);
@@ -166,7 +184,13 @@ export class HttpClient {
                 response = await this.axios.request(config);
                 if (this._isStatusOk(response.status)) return response;
             } catch (err) {
-                return cast(this._handleRequestError(err as AxiosError, config, stopTrying));
+                return cast(
+                    this._handleRequestError(
+                        err as AxiosError,
+                        config,
+                        stopTrying
+                    )
+                );
             }
 
             if (response.status === RATE_LIMIT_EXCEEDED_STATUS_CODE) {
@@ -198,7 +222,11 @@ export class HttpClient {
      * Handles all unexpected errors that can happen, but are not
      * Apify API typed errors. E.g. network errors, timeouts and so on.
      */
-    private _handleRequestError(err: AxiosError, config: ApifyRequestConfig, stopTrying: (e: Error) => void) {
+    private _handleRequestError(
+        err: AxiosError,
+        config: ApifyRequestConfig,
+        stopTrying: (e: Error) => void
+    ) {
         if (this._isTimeoutError(err) && config.doNotRetryTimeouts) {
             return stopTrying(err);
         }
@@ -236,7 +264,9 @@ export class HttpClient {
      * a response, the request often does not fail, but simply contains
      * an incomplete response. This can often be fixed by retrying.
      */
-    private _isResponseBodyInvalid(err: Error): err is InvalidResponseBodyError {
+    private _isResponseBodyInvalid(
+        err: Error
+    ): err is InvalidResponseBodyError {
         return err instanceof InvalidResponseBodyError;
     }
 
@@ -264,7 +294,11 @@ export class HttpClient {
 
     private _onRequestRetry(error: Error, attempt: number) {
         if (attempt === Math.round(this.maxRetries / 2)) {
-            this.logger.warning(`API request failed ${attempt} times. Max attempts: ${this.maxRetries + 1}.\nCause:${error.stack}`);
+            this.logger.warning(
+                `API request failed ${attempt} times. Max attempts: ${
+                    this.maxRetries + 1
+                }.\nCause:${error.stack}`
+            );
         }
     }
 }
